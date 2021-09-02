@@ -110,8 +110,8 @@ impl_opaque_keys! {
 /// This runtime version.
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("template-parachain"),
-	impl_name: create_runtime_str!("template-parachain"),
+	spec_name: create_runtime_str!("gamedao"),
+	impl_name: create_runtime_str!("gamedao"),
 	authoring_version: 1,
 	spec_version: 1,
 	impl_version: 0,
@@ -125,7 +125,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 /// up by `pallet_aura` to implement `fn slot_duration()`.
 ///
 /// Change this to adjust the block time.
-pub const MILLISECS_PER_BLOCK: u64 = 12000;
+pub const MILLISECS_PER_BLOCK: u64 = 6000;
 
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
@@ -449,6 +449,156 @@ impl template::Config for Runtime {
 	type Event = Event;
 }
 
+//
+//	C O N T R O L
+//
+
+parameter_types! {
+
+	// pub const Treasury: AccountId =
+	pub const Fee: Balance = 100 * DOLLARS;
+	pub const MaxBodiesPerAccount: usize = 10;
+	pub const MaxCreationsPerBlock: usize = 3;
+	pub const MaxMembersPerBody: usize = 1024;
+
+}
+
+impl module_control::Config for Runtime {
+
+	// type Treasury = Treasury;
+	type ForceOrigin = EnsureRoot<AccountId>;
+
+	type Currency = Balances;
+	type CreationFee = Fee;
+
+	type MaxBodiesPerAccount = MaxBodiesPerAccount;
+	type MaxCreationsPerBlock = MaxCreationsPerBlock;
+	type MaxMembersPerBody = MaxMembersPerBody;
+
+	type Event = Event;
+	type Randomness = RandomnessCollectiveFlip;
+
+	// type Tangram = module_tangram::Module<Runtime>;
+
+}
+
+//
+//	F U N D R A I S I N G
+//
+
+parameter_types! {
+
+	// TODO: more flexible account admin map
+	// pub const Admin: EnsureRootOrGameDAOAdmin = ();
+	pub const SeedNonce: u64 = 1;
+
+	pub const MinLength: usize = 4;
+	pub const MaxLength: usize = 64;
+
+	pub const MaxCampaignsPerAddress: usize = 3;
+	pub const MaxCampaignsPerBlock: usize = 3;
+	pub const MaxContributionsPerBlock: usize = 3;
+
+	pub const MinDuration: BlockNumber = 1 * DAYS;
+	pub const MaxDuration: BlockNumber = 100 * DAYS;
+
+	pub const MinCreatorDeposit: Balance = 1 * DOLLARS;
+	pub const MinContribution: Balance = 1 * DOLLARS;
+
+	pub const CreationFee: Balance = 1 * DOLLARS;
+
+}
+
+impl module_crowdfunding::Config for Runtime {
+
+	// ensure root or half council as admin role for campaigns.
+	// might need another instance of council as e.g. supervisor
+	// type ModuleAdmin = frame_system::EnsureRoot<AccountId>;
+
+	type GameDAOAdminOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+	type Currency = Balances;
+	type Event = Event;
+	type Nonce = SeedNonce;
+	type Randomness = RandomnessCollectiveFlip;
+
+	type MinLength = MinLength;
+	type MaxLength = MaxLength;
+
+	type MaxCampaignsPerAddress = MaxCampaignsPerAddress;
+	type MaxCampaignsPerBlock = MaxCampaignsPerBlock;
+	type MaxContributionsPerBlock = MaxContributionsPerBlock;
+
+	type MinDuration = MinDuration;
+	type MaxDuration = MaxDuration;
+	type MinCreatorDeposit = MinCreatorDeposit;
+	type MinContribution = MinContribution;
+
+}
+
+//
+//	G O V E R N A N C E
+//
+
+parameter_types! {
+
+	pub const MaxProposalsPerBlock: usize = 3;
+
+}
+
+impl module_governance::Config for Runtime {
+
+	type Currency = Balances;
+	type Event = Event;
+	type Nonce = SeedNonce;
+	type Randomness = RandomnessCollectiveFlip;
+	type MaxProposalsPerBlock = MaxContributionsPerBlock;
+
+}
+
+//
+//	T A N G R A M
+//
+
+parameter_types! {
+
+	pub const CreateRealmDeposit: Balance = 1000 * MILLICENTS;
+	pub const CreateClassDeposit: Balance = 500 * MILLICENTS;
+	pub const CreateTokenDeposit: Balance = 10 * MILLICENTS;
+    pub const MaxRealms: u64 = 1;
+    pub const MaxClasses: u64 = 1024;
+    pub const MaxToken: u128 = 2^32;
+    pub const MaxTotalToken: u128 = 2^64;
+
+}
+
+impl module_tangram::Config for Runtime {
+
+    type Event = Event;
+ 	type Currency = Balances;
+ 	type Randomness = RandomnessCollectiveFlip;
+	type Time = pallet_timestamp::Module<Runtime>;
+
+	type CreateRealmDeposit = CreateRealmDeposit;
+	type CreateClassDeposit = CreateClassDeposit;
+	type CreateTokenDeposit = CreateTokenDeposit;
+
+    type MaxRealmsPerOrg = MaxRealms;
+    type MaxClassesPerRealm = MaxClasses;
+    type MaxTokenPerClass = MaxToken;
+    type MaxTotalToken = MaxTotalToken;
+
+	type NextRealmIndex = u64;
+	type NextClassIndex = u64;
+	type NextItemIndex = u64;
+	type TotalIndex = u128;
+	type BurnedIndex = u128;
+
+}
+
+//
+//
+//
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -461,13 +611,9 @@ construct_runtime!(
 		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage},
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
-
 		ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Config, Storage, Inherent, Event<T>, ValidateUnsigned} = 20,
-
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 21,
-
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 30,
-
 		Aura: pallet_aura::{Pallet, Config<T>},
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Config},
 
@@ -479,6 +625,13 @@ construct_runtime!(
 
 		//Template
 		TemplatePallet: template::{Pallet, Call, Storage, Event<T>},
+
+		//GameDAO
+		GameDaoControl: module_control::{Module, Call, Storage, Event<T>},
+		GameDaoCrowdfunding: module_crowdfunding::{Module, Call, Storage, Event<T>},
+		GameDaoGovernance: module_governance::{Module, Call, Storage, Event<T>},
+		GameDaoTangram: module_tangram::{Module, Call, Storage, Event<T>},
+
 	}
 );
 

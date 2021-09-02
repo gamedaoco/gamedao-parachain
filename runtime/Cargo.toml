@@ -71,6 +71,12 @@ xcm-builder = { git = 'https://github.com/paritytech/polkadot', branch = 'releas
 xcm-executor = { git = 'https://github.com/paritytech/polkadot', branch = 'release-v0.9.9', default-features = false }
 pallet-xcm = { git = 'https://github.com/paritytech/polkadot', branch = 'release-v0.9.9', default-features = false }
 
+# gamedao
+module-control = { default-features = false, path = "../modules/control" }
+module-crowdfunding = { default-features = false, path = "../modules/crowdfunding" }
+module-governance = { default-features = false, path = "../modules/governance" }
+module-tangram = { default-features = false, path = "../modules/tangram" }
+
 [features]
 default = ['std']
 runtime-benchmarks = [
